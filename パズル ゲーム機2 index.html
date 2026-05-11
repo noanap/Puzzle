@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>モンスター・ハンドヘルド v2</title>
+    <style>
+        body { 
+            display: flex; flex-direction: column; align-items: center; 
+            background: #2c3e50; font-family: 'Courier New', Courier, monospace;
+            margin: 0; padding: 20px; height: 100vh; justify-content: center;
+        }
+
+        #game-console {
+            background: #bdc3c7;
+            padding: 30px 20px 50px 20px;
+            border-radius: 20px 20px 60px 20px;
+            box-shadow: 10px 10px 0px #7f8c8d;
+            border: 4px solid #95a5a6;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        #screen-area {
+            background: #222;
+            padding: 15px;
+            border-radius: 10px;
+            border: 10px solid #34495e;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        /* モンスター名表示 */
+        #monster-name {
+            color: #2ecc71; font-size: 0.7rem; margin-bottom: 8px; text-align: center;
+        }
+
+        #puzzle-board {
+            display: grid;
+            grid-template-columns: repeat(3, 75px);
+            grid-template-rows: repeat(3, 75px);
+            gap: 4px;
+        }
+
+        .tile {
+            width: 75px; height: 75px;
+            border-radius: 4px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.5rem; font-weight: bold; color: rgba(255,255,255,0); /* 最初は数字を隠す */
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        /* ガイドONの時の数字の色 */
+        .show-guide { color: rgba(255,255,255,0.8); }
+
+        .color-0 { background: #ff7675; } .color-1 { background: #fab1a0; }
+        .color-2 { background: #ffeaa7; } .color-3 { background: #55efc4; }
+        .color-4 { background: #81ecec; } .color-5 { background: #74b9ff; }
+        .color-6 { background: #a29bfe; } .color-7 { background: #fd79a8; }
+        .empty { background: #111; }
+
+        #controls {
+            display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 0 5px;
+        }
+
+        #d-pad { display: grid; grid-template-columns: repeat(3, 35px); grid-template-rows: repeat(3, 35px); }
+        .d-btn { background: #34495e; border: none; cursor: pointer; color: white; font-size: 12px;}
+        .d-btn:active { background: #1abc9c; }
+
+        #action-buttons { display: flex; gap: 10px; }
+        .a-btn {
+            width: 50px; height: 50px; border-radius: 50%; border: none;
+            cursor: pointer; color: white; font-weight: bold; font-size: 12px;
+        }
+        /* Sボタン（シャッフル） */
+        .s-btn { background: #2980b9; box-shadow: 0 4px 0 #1c5982; }
+        /* Aボタン（ガイド表示） */
+        .guide-btn { background: #c0392b; box-shadow: 0 4px 0 #962d22; }
+        .a-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #444; }
+
+        #status { color: #2ecc71; font-size: 0.8rem; text-align: center; margin-top: 10px; height: 15px;}
+    </style>
+</head>
+<body>
+
+    <div id="game-console">
+        <div id="screen-area">
+            <div id="monster-name">TYPE: PASTEL-DRAGON</div>
+            <div id="puzzle-board"></div>
+            <div id="status">READY?</div>
+        </div>
+
+        <div id="controls">
+            <div id="d-pad">
+                <div></div><button class="d-btn" onclick="moveByDir('up')">▲</button><div></div>
+                <button class="d-btn" onclick="moveByDir('left')">◀</button>
+                <div style="background:#34495e"></div>
+                <button class="d-btn" onclick="moveByDir('right')">▶</button>
+                <div></div><button class="d-btn" onclick="moveByDir('down')">▼</button><div></div>
+            </div>
+
+            <div id="action-buttons">
+                <button class="a-btn s-btn" onclick="shuffleBoard()">START</button>
+                <button class="a-btn guide-btn" onclick="toggleGuide()">GUIDE</button>
+            </div>
+        </div>
+        <div style="margin-top: 20px; font-size: 10px; color: #7f8c8d;">S:SHUFFLE / G:GUIDE</div>
+    </div>
+
+    <script>
+        const board = document.getElementById('puzzle-board');
+        const statusDisp = document.getElementById('status');
+        let state = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let guideVisible = false;
+
+        function render() {
+            board.innerHTML = '';
+            state.forEach((tileValue, i) => {
+                const div = document.createElement('div');
+                div.className = 'tile';
+                if (guideVisible) div.classList.add('show-guide');
+
+                if (tileValue === 8) {
+                    div.classList.add('empty');
+                } else {
+                    div.classList.add('color-' + tileValue);
+                    div.innerText = tileValue + 1; // 1〜8の数字
+                    div.onclick = () => move(i);
+                }
+                board.appendChild(div);
+            });
+        }
+
+        // ガイドの表示切り替え
+        function toggleGuide() {
+            guideVisible = !guideVisible;
+            render();
+        }
+
+        function move(i) {
+            const empty = state.indexOf(8);
+            const isAdjacent = Math.abs(Math.floor(i/3) - Math.floor(empty/3)) + Math.abs((i%3) - (empty%3)) === 1;
+            if (isAdjacent) {
+                [state[i], state[empty]] = [state[empty], state[i]];
+                render();
+                checkWin();
+            }
+        }
+
+        function moveByDir(dir) {
+            const empty = state.indexOf(8);
+            let target = -1;
+            if (dir === 'up' && empty < 6) target = empty + 3;
+            if (dir === 'down' && empty >= 3) target = empty - 3;
+            if (dir === 'left' && empty % 3 < 2) target = empty + 1;
+            if (dir === 'right' && empty % 3 > 0) target = empty - 1;
+            if (target !== -1) move(target);
+        }
+
+        function shuffleBoard() {
+            for (let i = 0; i < 100; i++) {
+                const dirs = ['up', 'down', 'left', 'right'];
+                moveByDir(dirs[Math.floor(Math.random() * 4)]);
+            }
+            statusDisp.innerText = "PLAYING...";
+            render();
+        }
+
+        function checkWin() {
+            if (state.every((val, index) => val === index)) {
+                statusDisp.innerText = "MISSION COMPLETE!";
+            }
+        }
+
+        render();
+    </script>
+</body>
+</html>
